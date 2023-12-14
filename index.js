@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require("dotenv").config();
+const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser')
 const app = express();
 const port = process.env.PORT || 5000;
@@ -34,6 +35,26 @@ async function run() {
   try {
     const usersCollection = client.db("styleHubDB").collection("users");
 
+    // auth connection related api 
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_SECRET_TOKEN, {
+        expiresIn: '30d'
+      })
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production' ? true : false,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'})
+      .send({success: true, token: token})
+    })
+
+
+    app.post('/logout', async(req,res) => {
+      const user = req.body;
+      res.clearCookie('token', {maxAge:0, sameSite: 'none', secure: true})
+      .send({success: true})
+
+    })
     app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result)
